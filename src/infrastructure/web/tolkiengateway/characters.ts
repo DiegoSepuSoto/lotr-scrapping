@@ -1,40 +1,34 @@
-import {Browser} from 'puppeteer';
-
 import {charactersRepositoryInterface} from '../../../domain/repositories/characters';
 import {Character} from '../../../domain/models/Character';
 
 export class charactersRepository implements charactersRepositoryInterface {
-  constructor(private browser: Browser) {
+  constructor(private browser: any) {
   }
 
   public async getCharactersLinksFromPage(pageURL: string): Promise<string[]> {
     try {
       const page = await this.browser.newPage();
 
-      await page.goto(pageURL, {
-        timeout: 0,
-        waitUntil: 'load',
-      });
+      await page.goto(pageURL);
 
       return await page.evaluate(() => {
         const items = document.querySelectorAll('li');
 
-        let links: string[] = [];
+        let charactersLinks: string[] = [];
 
         items.forEach((itemElement) => {
           if (itemElement.id === '') {
             const firstChild = itemElement.firstChild;
             if (firstChild && firstChild instanceof HTMLAnchorElement) {
-              links.push(firstChild.href);
+              charactersLinks.push(firstChild.href);
             }
           }
         });
 
-        return links;
+        return charactersLinks;
       });
-    } catch (e: any) {
-      console.error(e.message);
-      return [];
+    } catch (e) {
+      throw(e);
     }
   }
 
@@ -42,16 +36,11 @@ export class charactersRepository implements charactersRepositoryInterface {
     try {
       const page = await this.browser.newPage();
 
-      await page.goto(characterLink, {
-        timeout: 0,
-        waitUntil: 'load',
-      });
+      await page.goto(characterLink);
 
       const characterObject = await page.evaluate(() => {
         const images = document.querySelectorAll('img');
         const headingTitle = document.querySelector('#firstHeading');
-
-        console.log(headingTitle);
 
         if (images.length > 1 && headingTitle && headingTitle instanceof HTMLElement) {
           const image = images[1];
@@ -73,7 +62,6 @@ export class charactersRepository implements charactersRepositoryInterface {
       return undefined;
 
     } catch (e: any) {
-      console.error(e.message);
       throw(e);
     }
   }

@@ -14,32 +14,72 @@ export class charactersUseCase {
   constructor(private charactersRepository: charactersRepositoryInterface) {
   }
 
+  private async getHobbCharacters(): Promise<Character[]> {
+    try {
+      const hobbitCharactersLinks = await this.charactersRepository.getCharactersLinksFromPage(hobbitWikiURL);
+
+      const hobbitCharactersArray = await Promise.all(
+        hobbitCharactersLinks.map(async (characterLink) => {
+          return await this.buildCharacterInfo(characterLink, hobbitCategory);
+        }),
+      );
+
+      return hobbitCharactersArray.filter(isCharacter);
+    } catch (e) {
+      throw(e);
+    }
+  }
+
+  private async getLotrCharacters(): Promise<Character[]> {
+    try {
+      const lotrCharactersLinks = await this.charactersRepository.getCharactersLinksFromPage(lotrWikiURL);
+
+      const lotrCharactersArray = await Promise.all(
+        lotrCharactersLinks.map(async (characterLink) => {
+          return await this.buildCharacterInfo(characterLink, lotrCategory);
+        }),
+      );
+
+      return lotrCharactersArray.filter(isCharacter);
+    } catch (e) {
+      throw(e);
+    }
+  }
+
+  private async getSilmCharacters(): Promise<Character[]> {
+    try {
+      const silmarillionCharactersLinks = await this.charactersRepository.getCharactersLinksFromPage(silmarillionWikiURL);
+
+      const silmarillionCharactersArray = await Promise.all(
+        silmarillionCharactersLinks.map(async (characterLink) => {
+          return await this.buildCharacterInfo(characterLink, silmarillionCategory);
+        }),
+      );
+
+      return silmarillionCharactersArray.filter(isCharacter);
+    } catch (e) {
+      throw(e);
+    }
+  }
+
   public async generateCharactersFile(): Promise<void> {
-    const lotrCharactersLinks = await this.charactersRepository.getCharactersLinksFromPage(lotrWikiURL);
-    const hobbitCharactersLinks = await this.charactersRepository.getCharactersLinksFromPage(hobbitWikiURL);
-    const silmarillionCharactersLinks = await this.charactersRepository.getCharactersLinksFromPage(silmarillionWikiURL);
+    try {
+      const promisesCharacters = [];
+      const characters: Character[] = [];
 
-    const lotrCharactersArray = await Promise.all(
-      lotrCharactersLinks.map(async (characterLink) => {
-        return await this.buildCharacterInfo(characterLink, lotrCategory);
-      }),
-    );
+      const hobbCharacters = await this.getHobbCharacters();
+      const lotrCharacters = await this.getLotrCharacters();
+      const silmCharacters = await this.getSilmCharacters();
+      promisesCharacters.push(hobbCharacters, lotrCharacters, silmCharacters);
 
-    const hobbitCharactersArray = await Promise.all(
-      hobbitCharactersLinks.map(async (characterLink) => {
-        return await this.buildCharacterInfo(characterLink, hobbitCategory);
-      }),
-    );
+      for (const charactersArray of promisesCharacters) {
+        characters.push(...charactersArray);
+      }
 
-    const silmarillionCharactersArray = await Promise.all(
-      silmarillionCharactersLinks.map(async (characterLink) => {
-        return await this.buildCharacterInfo(characterLink, silmarillionCategory);
-      }),
-    );
-
-    const charactersArray = lotrCharactersArray.concat(hobbitCharactersArray, silmarillionCharactersArray).filter(isCharacter);
-
-    charactersFileGenerator(charactersArray);
+      charactersFileGenerator(characters);
+    } catch (e) {
+      throw(e);
+    }
   }
 
   private async buildCharacterInfo(characterLink: string, category: string): Promise<Character | undefined> {
@@ -53,8 +93,8 @@ export class charactersUseCase {
           characterInfo.image,
           category,
         );
-    } catch (e: any) {
-      console.error(e.message);
+    } catch (e) {
+      throw(e);
     }
   }
 }
