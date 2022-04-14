@@ -5,64 +5,83 @@ export class charactersRepository implements charactersRepositoryInterface {
   constructor(private browser: any) {
   }
 
-  public async getCharactersLinksFromPage(pageURL: string): Promise<string[]> {
+  public async getCharactersLinksFromPages(pageURLs: string[]): Promise<string[]> {
     try {
-      const page = await this.browser.newPage();
+      let charactersLinks: string[] = [];
 
-      await page.goto(pageURL);
+      await Promise.all(
+        pageURLs.map(async (pageURL: string) => {
+          const page = await this.browser.newPage();
+          await page.goto(pageURL, {waitUntil: 'load', timeout: 0});
 
-      return await page.evaluate(() => {
-        const items = document.querySelectorAll('li');
+          charactersLinks.unshift(await page.evaluate(() => {
+            let charactersLinks: string[] = [];
 
-        let charactersLinks: string[] = [];
+            const pageMemberItemHasImage = (pageMemberItemChildren: HTMLCollection): boolean => {
+              const pageMemberLeft = pageMemberItemChildren[0].innerHTML.replace(/(\r\n|\n|\r|\t)/gm, '');
+              return pageMemberLeft !== '' && !pageMemberLeft.includes("svg");
+            };
 
-        items.forEach((itemElement) => {
-          if (itemElement.id === '') {
-            const firstChild = itemElement.firstChild;
-            if (firstChild && firstChild instanceof HTMLAnchorElement) {
-              charactersLinks.push(firstChild.href);
-            }
-          }
-        });
+            const getCharacterLink = (pageMemberItemChildren: HTMLCollection) => {
+              return `https://lotr.fandom.com${pageMemberItemChildren[1].getAttribute('href')}`;
+            };
 
-        return charactersLinks;
-      });
+            const pageMemberItems = document.querySelectorAll('.category-page__member');
+
+            pageMemberItems.forEach((pageMemberItem) => {
+              const pageMemberItemChildren = pageMemberItem.children;
+
+              if (pageMemberItemChildren.length == 2 && pageMemberItemHasImage(pageMemberItemChildren)) {
+                charactersLinks.push(getCharacterLink(pageMemberItemChildren));
+              }
+            });
+
+            return charactersLinks;
+          }));
+
+          await page.close();
+        }),
+      );
+
+      return charactersLinks.flat();
     } catch (e) {
       throw(e);
     }
   }
 
-  public async getCharacterInfo(characterLink: string): Promise<Character | undefined> {
+  public async getCharacterInfo(characterLink: string): Promise<Character | null> {
     try {
       const page = await this.browser.newPage();
 
-      await page.goto(characterLink);
+      await page.goto(characterLink, {waitUntil: 'load', timeout: 0});
 
       const characterObject = await page.evaluate(() => {
-        const images = document.querySelectorAll('img');
+        const image = document.querySelectorAll('.pi-image-thumbnail')[0];
         const headingTitle = document.querySelector('#firstHeading');
 
-        if (images.length > 1 && headingTitle && headingTitle instanceof HTMLElement) {
-          const image = images[1];
-          const link = image.src;
-          const title = headingTitle.innerText;
+        if (image && headingTitle) {
+          const link = image.getAttribute('src');
+          const title = (headingTitle as HTMLElement)!.innerText;
 
           return {
             link, title,
           };
-        }
-
-        return undefined;
+        } else return null;
       });
+
+      await page.close();
 
       if (characterObject) {
         return new Character('', characterObject.title, characterObject.link, '');
+      } else {
+        return null;
       }
-
-      return undefined;
-
     } catch (e: any) {
       throw(e);
     }
+  }
+
+  public async closeBrowser(): Promise<void> {
+    await this.browser.close();
   }
 }

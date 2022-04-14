@@ -24,6 +24,4 @@ foo@bar:~$ npm run build && npm run
 
 ## Next steps
 
-- Dockerfile
-- Unit tests
-- Check for if new characters exist before scraping
+- Check if new character exist before scraping
